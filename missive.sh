@@ -55,7 +55,7 @@ require swaks
 
 addressee="$1"
 
-reports=('Uptime' 'Logins' 'Updates')
+reports=('Uptime' 'Memory' 'Disk' 'Logins' 'Updates')
 
 #
 # Report functions
@@ -76,6 +76,14 @@ report_Updates() {
 
 report_Logins() {
     last -ad -n3 | grep -v -e '^wtmp begins' -e '^$'
+}
+
+report_Memory() {
+    free -m
+}
+
+report_Disk() {
+    df -h
 }
 
 #
