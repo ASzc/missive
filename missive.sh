@@ -34,11 +34,14 @@ die() {
     exit 1
 }
 
-deptest() {
-    which "$1" 1>/dev/null 2>&1 || die "$1 is required"
+inpath() {
+    which "$1" 1>/dev/null 2>&1
+}
+require() {
+    inpath "$1" || die "$1 is required"
 }
 
-deptest swaks
+require swaks
 
 #
 # Config
@@ -53,9 +56,18 @@ addressee="$1"
 #
 
 host_fqdn="$(hostname -f)"
+
 start_time="$(date -Iminutes)"
+
 uptime="$(uptime)"
-updates_list="$(yum -q list updates | sed -r -e 's/^([^.]+)\.(.i386|.i686|.x86_64|.noarch|.src) +([^ ]+)\.el.*$/\1 \3/;tx;d;:x' | column -t)"
+
+if inpath yum
+then
+    updates_list="$(yum -q list updates | sed -r -e 's/^([^.]+)\.(.i386|.i686|.x86_64|.noarch|.src) +([^ ]+)\.el.*$/\1 \3/;tx;d;:x' | column -t)"
+else
+    updates_list="[System not supported]"
+fi
+
 login_list="$(last -ad -n3 | grep -v -e '^wtmp begins' -e '^$')"
 
 #
