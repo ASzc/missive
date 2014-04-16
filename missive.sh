@@ -34,6 +34,10 @@ die() {
     exit 1
 }
 
+fexists() {
+    declare -f "$1" >/dev/null
+}
+
 inpath() {
     which "$1" 1>/dev/null 2>&1
 }
@@ -51,31 +55,47 @@ require swaks
 
 addressee="$1"
 
+reports=('Uptime' 'Logins' 'Updates')
+
+#
+# Report functions
+#
+
+report_Uptime() {
+    uptime
+}
+
+report_Updates() {
+    if inpath yum
+    then
+        yum -q list updates | sed -r -e 's/^([^.]+)\.(.i386|.i686|.x86_64|.noarch|.src) +([^ ]+)\.el.*$/\1 \3/;tx;d;:x' | column -t
+    else
+        echo "[System not supported]"
+    fi
+}
+
+report_Logins() {
+    last -ad -n3 | grep -v -e '^wtmp begins' -e '^$'
+}
+
 #
 # Collect message components
 #
 
 host_fqdn="$(hostname -f)"
-
 start_time="$(date -Iminutes)"
-
-uptime="$(uptime)"
-
-if inpath yum
-then
-    updates_list="$(yum -q list updates | sed -r -e 's/^([^.]+)\.(.i386|.i686|.x86_64|.noarch|.src) +([^ ]+)\.el.*$/\1 \3/;tx;d;:x' | column -t)"
-else
-    updates_list="[System not supported]"
-fi
-
-login_list="$(last -ad -n3 | grep -v -e '^wtmp begins' -e '^$')"
 
 #
 # Send message
 #
 
 {
-    printf 'Uptime:%s\n\n' "$uptime"
-    printf 'Logins:\n%s\n\n' "$login_list"
-    printf 'Updates:\n%s\n' "$updates_list"
+    for name in "${reports[@]}"
+    do
+        funct="report_$name"
+        if fexists "$funct"
+        then
+            printf "%s:\n%s\n\n" "$name" "$($funct)"
+        fi
+    done
 } | swaks --to "$addressee" --from "missive@$host_fqdn" --header "Subject: Status of $host_fqdn at $start_time" --body - >latest-message 2>&1
